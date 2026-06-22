@@ -8,48 +8,44 @@ async function handleSendMessage() {
     const promptText = userInput.value.trim();
     if (!promptText) return;
 
-    // 1. Render User message immediately
+    // 1. Show user message right away
     appendMessage('USER', promptText, 'user-msg');
     userInput.value = '';
 
-    // 2. Format chat context array for Puter's message parameter
-    chatHistory.push({ role: 'user', content: promptText });
-
-    // 3. Instantiate the AURA response placeholder block
     const auraId = appendMessage('AURA', 'Processing Engine...', 'aura-msg');
 
-    // 4. Inject strict custom model context requirements 
-    const messagesToSend = [
-        {
-            role: "system",
-            content: "SYSTEM MEMORY BLOCK:\nYou are AURA AI assistant. Powered by Puter Engine.\n\nYou must:\n- Answer normally for general questions.\n- If user asks about PyCJ, respond ONLY in PyCJ syntax.\n- You understand full PyCJ v1.6.1 language parameters.\n- Rules: Variable declarations use 'imagine'. Never break PyCJ syntax parameters."
-        },
-        ...chatHistory
-    ];
+    // Build standard message arrays
+    let contextPrompt = `SYSTEM MEMORY BLOCK:\nYou are AURA AI assistant.\n- Answer normally for general questions.\n- If user asks about PyCJ, respond ONLY in PyCJ syntax (e.g. variable declaration uses 'imagine').\n\n`;
+    
+    // Add history tracking to the message stream
+    chatHistory.forEach(msg => {
+        contextPrompt += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}\n`;
+    });
+    contextPrompt += `User: ${promptText}\nAssistant:`;
 
     try {
-        // 5. Utilize Puter's native zero-key cloud AI engine
-        const response = await puter.ai.chat(messagesToSend, { 
-            model: "openai/gpt-5.5" 
+        // Direct anonymous request to a completely free public inference point (No login or key needed!)
+        const response = await fetch("https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ inputs: contextPrompt })
         });
 
+        const data = await response.json();
         const auraPlaceholder = document.getElementById(auraId);
-        
-        if (response && response.message && response.message.content) {
-            const reply = response.message.content;
+
+        if (data && data[0] && data[0].generated_text) {
+            let fullText = data[0].generated_text;
+            // Clean out the historical prompt context wrapper
+            let reply = fullText.split("Assistant:").pop().trim();
+            
             auraPlaceholder.querySelector('.body').innerHTML = formatResponse(reply);
             
-            // Save response directly to ongoing tracking log
+            // Save to logs
+            chatHistory.push({ role: 'user', content: promptText });
             chatHistory.push({ role: 'assistant', content: reply });
         } else {
-            // Fallback check if response directly returns standard text payload string
-            const directText = response?.text || response;
-            if (directText) {
-                auraPlaceholder.querySelector('.body').innerHTML = formatResponse(directText);
-                chatHistory.push({ role: 'assistant', content: directText });
-            } else {
-                throw new Error("Unable to read text string output from Puter AI wrapper.");
-            }
+            throw new Error("Public endpoint busy. Try resending your message in a few seconds.");
         }
 
     } catch (err) {
@@ -71,7 +67,6 @@ function appendMessage(sender, text, className) {
     return id;
 }
 
-// Fixed hex notation eliminates syntax regex processing anomalies
 function formatResponse(text) {
     let clean = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const codeBlockRegex = /\x60\x60\x60(.*?)\x60\x60\x60/gs;
