@@ -1,50 +1,87 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PyCJ AI Language Companion</title>
+    <title>PyCJ AI Assistant</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2a4 4 0 0 0-4 4v2H6a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V10a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4z'/%3E%3Ccircle cx='12' cy='15' r='2'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
+    <div id="sidebar-overlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div id="toast-notification" class="toast-notification">Copied to clipboard</div>
+
+    <div id="onboarding-modal" class="modal-overlay">
+        <div class="modal-box onboarding-box">
+            <div class="onboarding-header">
+                <div class="onboarding-logo"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+                <h2>Welcome to PyCJ</h2>
+                <p class="onboarding-sub">Set up your profile to get started</p>
+            </div>
+            <div class="onboarding-body">
+                <div class="input-group"><label for="onboard-name">Full Name</label><input type="text" id="onboard-name" placeholder="Enter your name..." autocomplete="off"></div>
+                <div class="input-group"><label for="onboard-pass">Admin Password</label><input type="password" id="onboard-pass" placeholder="Leave blank if standard user"><span class="input-hint">Only required if you are the system administrator.</span></div>
+                <div class="input-group"><label for="onboard-api">Groq API Key</label><input type="password" id="onboard-api" placeholder="gsk_..."><span class="input-hint">Required to generate responses. Get yours free at <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer">console.groq.com/keys</a></span></div>
+                <button class="btn-continue" onclick="completeOnboarding()">Continue</button>
+            </div>
+        </div>
+    </div>
+
     <div class="app-layout">
-        
-        <aside class="sidebar">
-            <button id="new-chat-btn" class="btn btn-primary long-btn" onclick="createNewChatSession()">+ New Chat</button>
-            <div id="history-list" class="history-list"></div>
+        <aside id="sidebar" class="sidebar">
+            <div class="sidebar-header"><div class="brand-title"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg><span class="brand-logo">PyCJ</span></div></div>
+            <button class="btn-new-chat" onclick="createNewChatSession()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>New chat</button>
+            <div class="sidebar-search"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="search-chats" placeholder="Search chats..." oninput="filterChats(this.value)"></div>
+            <div class="history-section">
+                <div class="history-label">HISTORY</div>
+                <div class="history-date-label">TODAY</div>
+                <div id="history-list" class="history-list"></div>
+            </div>
             <div class="sidebar-footer">
-                <button id="config-key-btn" class="icon-btn" onclick="openKeyModal()" title="Manage Settings">⚙️ App Settings</button>
+                <button class="sidebar-action-btn" onclick="deleteAllChatSessions()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>Clear all</button>
+                <button class="sidebar-action-btn" onclick="openKeyModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>Settings</button>
             </div>
         </aside>
 
         <div class="chat-container">
-            
             <header class="chat-header">
-                <div class="bot-profile">
-                    <div class="avatar-container">
-                        <img id="bot-avatar" src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=150&auto=format&fit=crop&q=80" alt="PyCJ Intelligence">
-                        <span class="online-indicator"></span>
+                <button class="hamburger-btn" onclick="toggleSidebar()"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+                <div class="model-selector-wrapper">
+                    <button class="model-selector-btn" onclick="toggleModelDropdown()">
+                        <span id="active-model-name">PyCJ X7K2</span>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                    </button>
+                    <div id="model-dropdown" class="model-dropdown">
+                        <div class="dropdown-label">DETAILED</div>
+                        <div class="dropdown-label fast-label">INSTANT</div>
                     </div>
-                    <div class="bot-info">
-                        <h2 id="current-chat-title">PyCJ Engine AI</h2>
-                        <p>Llama 3.3 70B Engine Layer (Released 2026)</p>
-                    </div>
+                </div>
+                <div class="header-right-controls">
+                    <button class="theme-toggle-btn" onclick="toggleTheme()">
+                        <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+                        <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                    </button>
                 </div>
             </header>
 
-            <div id="chat-feed" class="chat-feed"></div>
+            <div class="chat-workspace" id="chat-workspace">
+                <div id="chat-feed" class="chat-feed"></div>
+                <button id="scroll-fab" class="scroll-fab" onclick="scrollToBottom()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg></button>
+            </div>
 
-            <footer class="chat-input-bar">
-                <textarea id="userMessageInput" placeholder="Ask about imagine, output, ask, or loops..." rows="1" onkeydown="handleInputKeyPress(event)"></textarea>
-                <button id="send-msg-btn" onclick="submitMessagePipeline()">
-                    <svg id="send-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path fill="currentColor" d="M2,21L23,12L2,3V10L17,12L2,14V21Z" />
-                    </svg>
-                    <svg id="stop-icon" viewBox="0 0 24 24" width="20" height="20" style="display: none;">
-                        <path fill="currentColor" d="M6,6H18V18H6V6Z" />
-                    </svg>
-                </button>
+            <footer class="chat-input-area">
+                <div class="input-container-premium">
+                    <div class="input-main-row">
+                        <textarea id="userMessageInput" placeholder="Message PyCJ..." rows="1" onkeydown="handleInputKeyPress(event)"></textarea>
+                        <button id="send-button" class="send-button" onclick="submitMessagePipeline()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+                    </div>
+                    <div class="input-sub-row">
+                        <span id="stop-generate-btn" class="stop-generate-text" onclick="stopActiveAIStreaming()">Stop generating</span>
+                        <span id="model-badge-sub" class="model-badge-sub">PyCJ X7K2</span>
+                    </div>
+                </div>
+                <p class="footer-disclaimer">PyCJ can make mistakes. Consider checking important information.</p>
             </footer>
         </div>
     </div>
@@ -52,28 +89,17 @@
     <div id="key-modal" class="modal-overlay">
         <div class="modal-box">
             <div class="modal-header">
-                <h3>PyCJ Companion Configuration</h3>
+                <h3>Settings</h3>
+                <button class="modal-close" onclick="closeKeyModal()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
             </div>
             <div class="modal-body">
-                <div class="input-group" style="margin-bottom: 14px;">
-                    <label for="modalUserName">User Name</label>
-                    <input type="text" id="modalUserName" placeholder="Enter your name...">
-                </div>
-                <div class="input-group" style="margin-bottom: 14px;">
-                    <label for="modalLanguage">Preferred Communication Language</label>
-                    <select id="modalLanguage" style="background: var(--bg-app); border: 1px solid var(--border-line); color: #fff; padding: 10px 14px; border-radius: 6px; outline: none; width: 100%;">
-                        <option value="English">English</option>
-                        <option value="Roman English">Roman English</option>
-                        <option value="Roman Urdu">Roman Urdu</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label for="modalApiKey">Groq API Token String</label>
-                    <input type="password" id="modalApiKey" placeholder="gsk_...">
-                </div>
+                <div class="input-group"><label for="modalUserName">User Name</label><input type="text" id="modalUserName" placeholder="Enter your name..."></div>
+                <div class="input-group"><label for="modalOwnerPass">Admin Password</label><input type="password" id="modalOwnerPass" placeholder="Enter admin password to unlock owner mode"><span class="input-hint">Type the password and save to become owner. Leave blank to remove owner status.</span></div>
+                <div class="input-group"><label for="modalApiKey">Groq API Key</label><input type="password" id="modalApiKey" placeholder="gsk_..."></div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-primary" onclick="saveApiKeyCredentials()">Save Changes</button>
+                <button class="btn-cancel" onclick="closeKeyModal()">Cancel</button>
+                <button class="btn-save" onclick="saveApiKeyCredentials()">Save</button>
             </div>
         </div>
     </div>
